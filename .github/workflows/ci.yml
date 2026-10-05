@@ -1,0 +1,32 @@
+name: checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '${{ matrix.python }}'
+      - run: pip install -e '.[dev]'
+      - run: ruff check src tests
+      - run: pytest -m 'not semantic' -q
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t margin-notes .
+      - run: |
+          docker run -d --name notes -p 127.0.0.1:8000:8000 margin-notes
+          for attempt in $(seq 1 30); do
+            if curl --fail http://127.0.0.1:8000/health; then break; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:8000/query -H 'Content-Type: application/json' -d '{"question":"When do travel reimbursements need to be submitted?"}' > response.json
+          python -c 'import json; r=json.load(open("response.json")); assert not r["abstained"]; assert r["citations"][0]["document_id"] == "travel"'
+
