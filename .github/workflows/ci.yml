@@ -4,22 +4,22 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python: ['3.11', '3.13']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '${{ matrix.python }}'
       - run: pip install -e '.[dev]'
       - run: ruff check src tests
       - run: pytest -m 'not semantic' -q
   container:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: docker build -t margin-notes .
       - run: |
           docker run -d --name notes -p 127.0.0.1:8000:8000 margin-notes
@@ -29,4 +29,3 @@ jobs:
           done
           curl --fail http://127.0.0.1:8000/query -H 'Content-Type: application/json' -d '{"question":"When do travel reimbursements need to be submitted?"}' > response.json
           python -c 'import json; r=json.load(open("response.json")); assert not r["abstained"]; assert r["citations"][0]["document_id"] == "travel"'
-
